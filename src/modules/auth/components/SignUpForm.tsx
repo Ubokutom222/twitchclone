@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-// import authClient from "@/lib/auth-client"
 
 export function SignUpForm() {
   const formSchema = z.object({
@@ -35,9 +34,7 @@ export function SignUpForm() {
     },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    console.log(data);
-  }
+  async function onSubmit(data: z.infer<typeof formSchema>) {}
   return (
     <div
       data-slot="card"

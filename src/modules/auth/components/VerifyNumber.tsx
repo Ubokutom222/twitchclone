@@ -36,11 +36,13 @@ export function VerifyNumber() {
       opacity: 0,
     }),
   };
-
+  const [resendButtonActive, setResendButtonActive] = useState<boolean>(false);
   const [OTP, setOTP] = useState<number | undefined>(undefined);
   async function generateOTP() {
     // TODO: Work on backend to generate OTP
     if (value || value !== "") {
+      setResendButtonActive(false);
+      setOTP(undefined);
       const { otp } = await generateMutation.mutateAsync({
         number: value,
       });
@@ -52,13 +54,11 @@ export function VerifyNumber() {
     }
   }
 
-  const [resendButtonActive, setResendButtonActive] = useState<boolean>(false);
-
   useEffect(() => {
     if (OTP !== undefined) {
       setTimeout(() => {
         setResendButtonActive(true);
-      }, 30000);
+      }, 15000);
     }
   }, [OTP]);
 
@@ -88,7 +88,7 @@ export function VerifyNumber() {
               animate="animate"
               exit="exit"
               variants={slideVariants}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ type: "keyframes", stiffness: 300, damping: 30 }}
             >
               <Label>Enter your Phone number</Label>
               <PhoneInput
@@ -116,39 +116,48 @@ export function VerifyNumber() {
               animate="animate"
               exit="exit"
               variants={slideVariants}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ type: "keyframes", stiffness: 300, damping: 30 }}
             >
               <Label>You have been sent an OTP, Please enter below</Label>
-              <InputOTP
-                maxLength={6}
-                value={inputOTPValue}
-                onChange={(value) => setInputOTPValue(value)}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
-              <div className="flex gap-2 flex-col">
-                <p className="text-sm">
-                  Didn&apos;t recieve the OTP, Click below to resend
-                </p>
-                <Button
-                  variant="secondary"
-                  onClick={generateOTP}
-                  disabled={!resendButtonActive}
+              <div className="w-full flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={inputOTPValue}
+                  onChange={(value) => setInputOTPValue(value)}
                 >
-                  {!generateMutation.isPending ? (
-                    "Resend"
-                  ) : (
-                    <Loader2Icon className="animate-spin" />
-                  )}
-                </Button>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
+              {resendButtonActive && (
+                <motion.div
+                  initial={{ opacity: 0, y: -200 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="flex gap-2 flex-col"
+                >
+                  <p className="text-sm">
+                    Didn&apos;t recieve the OTP, Click below to resend
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={generateOTP}
+                    disabled={!resendButtonActive}
+                  >
+                    {!generateMutation.isPending ? (
+                      "Resend"
+                    ) : (
+                      <Loader2Icon className="animate-spin" />
+                    )}
+                  </Button>
+                </motion.div>
+              )}
               <div className="flex gap-2 justify-end">
                 <Button
                   onClick={() => {
