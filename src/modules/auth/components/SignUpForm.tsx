@@ -12,7 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
 
+/**
+  NOTE: This page will accept two props from the url `verified: boolean` and `number: string`
+  
+  ```
+  TODO: Find a way to encrypt the date or secure it.
+  ```
+
+  These props will provide if the phone number is verified and the verified phone number.
+
+  If these props are undefined or the phone number isn't verified, An error is thrown.
+
+*/
 export function SignUpForm() {
   const formSchema = z.object({
     username: z
@@ -20,6 +34,7 @@ export function SignUpForm() {
       .min(3, "Username must be at least three characters")
       .max(128, "Username must not exceed 128 characters"),
     email: z.email(),
+    // TODO: Handle checks for valid phone number
     phoneNumber: z.string().nonoptional(),
     date: z.string().nonoptional(),
   });
@@ -29,12 +44,28 @@ export function SignUpForm() {
     defaultValues: {
       email: "",
       username: "",
-      phoneNumber: "",
+      // NOTE: Current placeholder for the phone number as the url data hasn't been built yet.
+      // NOTE: This will be corrected in the future.
+      phoneNumber: "+2348123213835",
       date: "",
     },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {}
+  const registerMutation = trpc.auth.register.useMutation({
+    onError(err) {
+      toast.error(err.message);
+    },
+  });
+
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    const { date, email, phoneNumber, username } = data;
+    await registerMutation.mutateAsync({
+      username,
+      email,
+      phoneNumber,
+      date,
+    });
+  }
   return (
     <div
       data-slot="card"
@@ -49,7 +80,10 @@ export function SignUpForm() {
             Registration
           </div>
         </div>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col space-y-2"
+        >
           <Form {...form}>
             <FormField
               name="email"

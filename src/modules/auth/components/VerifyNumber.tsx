@@ -18,7 +18,7 @@ import { Loader2Icon } from "lucide-react";
 export function VerifyNumber() {
   const [formState, setFormState] = useState<"NUMBER" | "OTP">("NUMBER");
   const [direction, setDirection] = useState<number>(1); // 1 -> forward (slide from right), -1 -> back (slide from left)
-  const [value, setValue] = useState<any>("");
+  const [value, setValue] = useState<string | undefined>("");
   const generateMutation = trpc.auth.generateOTP.useMutation({});
 
   // Variants use the `custom` prop (direction) to determine enter / exit x offsets
@@ -39,18 +39,21 @@ export function VerifyNumber() {
   const [resendButtonActive, setResendButtonActive] = useState<boolean>(false);
   const [OTP, setOTP] = useState<number | undefined>(undefined);
   async function generateOTP() {
-    // TODO: Work on backend to generate OTP
-    if (value || value !== "") {
-      setResendButtonActive(false);
-      setOTP(undefined);
-      const { otp } = await generateMutation.mutateAsync({
-        number: value,
-      });
-      setDirection(-1);
-      setFormState("OTP");
-      setOTP(otp);
+    if (value && value !== "") {
+      if (value.length > 8) {
+        setResendButtonActive(false);
+        setOTP(undefined);
+        const { otp } = await generateMutation.mutateAsync({
+          number: value,
+        });
+        setDirection(-1);
+        setFormState("OTP");
+        setOTP(otp);
+      } else {
+        toast.info("Please enter a valid phone number");
+      }
     } else {
-      toast.info("Please enter your number");
+      toast.info("Please enter your phone number");
     }
   }
 
@@ -58,14 +61,14 @@ export function VerifyNumber() {
     if (OTP !== undefined) {
       setTimeout(() => {
         setResendButtonActive(true);
-      }, 15000);
+      }, 45000);
     }
   }, [OTP]);
 
   const [inputOTPValue, setInputOTPValue] = useState<string>("");
   const router = useRouter();
   async function verifyOTP() {
-    if (inputOTPValue === OTP?.toString()) {
+    if (inputOTPValue === OTP?.toLocaleString()) {
       toast.success("Verified. You will be redirected for registration");
       router.push("/register");
     } else {
