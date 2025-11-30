@@ -16,37 +16,34 @@ import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 
 /**
-  NOTE: This page will accept two props from the url `verified: boolean` and `number: string`
-  
-  ```
-  TODO: Find a way to encrypt the date or secure it.
-  ```
-
-  These props will provide if the phone number is verified and the verified phone number.
-
-  If these props are undefined or the phone number isn't verified, An error is thrown.
+  * NOTE: This page will accept two props from the url `verified: boolean` and `number: string`
+  * 
+  * ```
+  * TODO: Find a way to encrypt the date or secure it.
+  * ```
+  *
+  * These props will provide if the phone number is verified and the verified phone number.
+  * If these props are undefined or the phone number isn't verified, An error is thrown.
 
 */
-export function SignUpForm() {
+
+interface Props {
+  number: string;
+}
+export function SignUpForm({ number }: Props) {
   const formSchema = z.object({
     username: z
       .string()
       .min(3, "Username must be at least three characters")
       .max(128, "Username must not exceed 128 characters"),
     email: z.email(),
-    // TODO: Handle checks for valid phone number
-    phoneNumber: z.string().nonoptional(),
     date: z.string().nonoptional(),
   });
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       username: "",
-      // NOTE: Current placeholder for the phone number as the url data hasn't been built yet.
-      // NOTE: This will be corrected in the future.
-      phoneNumber: "+2348123213835",
       date: "",
     },
   });
@@ -58,11 +55,12 @@ export function SignUpForm() {
   });
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    const { date, email, phoneNumber, username } = data;
+    const { date, email, username } = data;
+    console.log(data, number);
     await registerMutation.mutateAsync({
       username,
       email,
-      phoneNumber,
+      phoneNumber: number,
       date,
     });
   }

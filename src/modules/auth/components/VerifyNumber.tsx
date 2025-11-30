@@ -14,6 +14,7 @@ import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2Icon } from "lucide-react";
+import bcrypt from "bcryptjs";
 
 export function VerifyNumber() {
   const [formState, setFormState] = useState<"NUMBER" | "OTP">("NUMBER");
@@ -65,12 +66,15 @@ export function VerifyNumber() {
     }
   }, [OTP]);
 
+  const encryptMutation = trpc.auth.encrypt.useMutation();
   const [inputOTPValue, setInputOTPValue] = useState<string>("");
   const router = useRouter();
   async function verifyOTP() {
-    if (inputOTPValue === OTP?.toLocaleString()) {
+    const isVerified = await bcrypt.compare(inputOTPValue, OTP);
+    if (isVerified) {
       toast.success("Verified. You will be redirected for registration");
-      router.push("/register");
+      const data = await encryptMutation.mutateAsync({ number: value });
+      router.push(`/register?number=${data.number}`);
     } else {
       toast.error("Invalid OTP, Please Try Again");
     }

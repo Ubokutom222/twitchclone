@@ -4,6 +4,9 @@ import { TRPCError } from "@trpc/server";
 import db from "@/db";
 import { user } from "@/db/schema";
 import { nanoid } from "nanoid";
+import { signIn } from "@/auth";
+import bcrypt from "bcryptjs";
+import { encrypt } from "@/modules/auth/encryptHook";
 
 const authRouter = createTRPCRouter({
   generateOTP: baseProcedure
@@ -14,8 +17,10 @@ const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       try {
-        const otp = Math.floor(100000 + Math.random() * 900000);
+        const OTP = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = await bcrypt.hash(OTP, 6);
         console.log(otp, input.number);
+        if (process.env.NODE_ENV === "development") console.log(OTP);
         return { otp };
       } catch (error) {
         console.log(error);
@@ -40,7 +45,7 @@ const authRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       try {
         const { date, email, phoneNumber, username } = input;
-
+        if (process.env.NODE_ENV === "development") console.log(input);
         if (!date || !email || !phoneNumber || !username) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -48,15 +53,47 @@ const authRouter = createTRPCRouter({
           });
         }
 
-        await db.insert(user).values({
-          id: nanoid(),
-          DOB: date,
+        const newUser = await db
+          .insert(user)
+          .values({
+            id: nanoid(),
+            DOB: date,
+            phoneNumber,
+            name: username,
+            email,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            emailVerified: new Date(),
+          })
+          .returning();
+
+        await signIn("credentials", {
           phoneNumber,
           name: username,
           email,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          emailVerified: newUser[0].emailVerified,
         });
+      } catch (error) {
+        console.log(error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Server Error",
+        });
+      }
+    }),
+  encrypt: baseProcedure
+    .input(z.object({ number: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const { number } = input;
+
+        if (!number) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Missing Body Data",
+          });
+        }
+        return { number: encrypt(number) };
       } catch (error) {
         console.log(error);
         throw new TRPCError({

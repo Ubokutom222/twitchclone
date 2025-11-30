@@ -1,8 +1,8 @@
 import { initTRPC } from "@trpc/server";
 import { cache } from "react";
 import superjson from "superjson";
-// import { TRPCError } from "@trpc/server";
-// import { headers } from "next/headers";
+import { auth } from "@/auth";
+import { TRPCError } from "@trpc/server";
 export const createTRPCContext = cache(async () => {
   /**
    * @see: https://trpc.io/docs/server/context
@@ -24,21 +24,17 @@ export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 export const baseProcedure = t.procedure;
 
-// TODO: Redo the protected procedures
+export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
+  const session = await auth();
 
-// export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
+  if (!session) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "No Signed In User" });
+  }
 
-//   if (!session) {
-//     throw new TRPCError({ code: "UNAUTHORIZED", message: "No Signed In User" });
-//   }
-
-//   return next({
-//     ctx: {
-//       ...ctx,
-//       session,
-//     },
-//   });
-// });
+  return next({
+    ctx: {
+      ...ctx,
+      session,
+    },
+  });
+});
