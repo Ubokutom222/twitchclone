@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import { signIn } from "@/auth";
 import bcrypt from "bcryptjs";
 import { encrypt } from "@/modules/auth/encryptHook";
+import { eq, or } from "drizzle-orm";
 
 const authRouter = createTRPCRouter({
   generateOTP: baseProcedure
@@ -20,7 +21,8 @@ const authRouter = createTRPCRouter({
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otp = await bcrypt.hash(OTP, 6);
         console.log(otp, input.number);
-        if (process.env.NODE_ENV === "development") console.log(OTP);
+        // TODO: Remove this line after development
+        console.log(OTP);
         return { otp };
       } catch (error) {
         console.log(error);
@@ -53,6 +55,18 @@ const authRouter = createTRPCRouter({
           });
         }
 
+        const existingUser = await db
+          .select()
+          .from(user)
+          .where(or(eq(user.email, email), eq(user.phoneNumber, phoneNumber)));
+
+        if (existingUser.length > 0) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "User already exist",
+          });
+        }
+
         const newUser = await db
           .insert(user)
           .values({
@@ -72,6 +86,7 @@ const authRouter = createTRPCRouter({
           name: username,
           email,
           emailVerified: newUser[0].emailVerified,
+          redirect: false,
         });
       } catch (error) {
         console.log(error);
@@ -93,7 +108,7 @@ const authRouter = createTRPCRouter({
             message: "Missing Body Data",
           });
         }
-        return { number: encrypt(number) };
+        return { number: encrypt(input) };
       } catch (error) {
         console.log(error);
         throw new TRPCError({

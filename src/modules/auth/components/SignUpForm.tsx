@@ -14,6 +14,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 /**
   * NOTE: This page will accept two props from the url `verified: boolean` and `number: string`
@@ -47,16 +48,19 @@ export function SignUpForm({ number }: Props) {
       date: "",
     },
   });
-
+  const router = useRouter();
   const registerMutation = trpc.auth.register.useMutation({
     onError(err) {
       toast.error(err.message);
+    },
+    onSuccess() {
+      toast.success("Registered Sucessfully");
+      router.push("/");
     },
   });
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     const { date, email, username } = data;
-    console.log(data, number);
     await registerMutation.mutateAsync({
       username,
       email,

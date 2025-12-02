@@ -10,11 +10,11 @@ import {
 export const user = pgTable("user", {
   id: text("id").notNull().primaryKey(),
   name: text("name"),
-  email: text("email"),
+  email: text("email").unique(),
   emailVerified: timestamp("email_verified").notNull(),
   image: text("image"),
   DOB: date("DOB").notNull(),
-  phoneNumber: text("phoneNumber").notNull(),
+  phoneNumber: text("phoneNumber").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

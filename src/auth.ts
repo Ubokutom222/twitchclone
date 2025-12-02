@@ -3,6 +3,7 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import db from "@/db";
 import { user, session, account, verification } from "@/db/schema";
 import CreadentialsProvider from "next-auth/providers/credentials";
+import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -20,9 +21,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         emailVerified: { label: "emailVerified" },
       },
       async authorize(credentials) {
-        const { emailVerified } = credentials;
-        if (!emailVerified) {
-          throw new Error("UNAUTHORISED");
+        const [signedInUser] = await db
+          .select()
+          .from(user)
+          .where(eq(user.email, credentials.email as string));
+
+        if (signedInUser) {
+          return signedInUser;
         } else return null;
       },
     }),

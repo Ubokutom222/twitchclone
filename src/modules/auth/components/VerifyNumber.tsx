@@ -38,7 +38,7 @@ export function VerifyNumber() {
     }),
   };
   const [resendButtonActive, setResendButtonActive] = useState<boolean>(false);
-  const [OTP, setOTP] = useState<number | undefined>(undefined);
+  const [OTP, setOTP] = useState<string | undefined>(undefined);
   async function generateOTP() {
     if (value && value !== "") {
       if (value.length > 8) {
@@ -70,10 +70,12 @@ export function VerifyNumber() {
   const [inputOTPValue, setInputOTPValue] = useState<string>("");
   const router = useRouter();
   async function verifyOTP() {
-    const isVerified = await bcrypt.compare(inputOTPValue, OTP);
+    const isVerified = await bcrypt.compare(inputOTPValue, OTP ? OTP : "");
     if (isVerified) {
       toast.success("Verified. You will be redirected for registration");
-      const data = await encryptMutation.mutateAsync({ number: value });
+      const data = await encryptMutation.mutateAsync({
+        number: value ? value : "",
+      });
       router.push(`/register?number=${data.number}`);
     } else {
       toast.error("Invalid OTP, Please Try Again");
