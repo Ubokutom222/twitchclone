@@ -86,7 +86,7 @@ const authRouter = createTRPCRouter({
           name: username,
           email,
           emailVerified: newUser[0].emailVerified,
-          redirect: false,
+          redirectTo: "/"
         });
       } catch (error) {
         console.log(error);

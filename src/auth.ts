@@ -4,6 +4,7 @@ import db from "@/db";
 import { user, session, account, verification } from "@/db/schema";
 import CreadentialsProvider from "next-auth/providers/credentials";
 import { eq } from "drizzle-orm";
+import { type User } from "@auth/core/types"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -27,8 +28,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .where(eq(user.email, credentials.email as string));
 
         if (signedInUser) {
-          return signedInUser;
-        } else return null;
+          return signedInUser as User;
+        }
+
+        return null;
       },
     }),
   ],

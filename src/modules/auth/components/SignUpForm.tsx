@@ -55,7 +55,6 @@ export function SignUpForm({ number }: Props) {
     },
     onSuccess() {
       toast.success("Registered Sucessfully");
-      router.push("/");
     },
   });
 
