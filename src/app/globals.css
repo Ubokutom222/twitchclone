@@ -112,6 +112,26 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.PhoneInputCountrySelect {
+  background-color: oklch(1 0 0);
+  color: oklch(0.145 0 0);
+}
+
+.PhoneInputCountrySelect option {
+  background-color: oklch(1 0 0);
+  color: oklch(0.145 0 0);
+}
+
+.PhoneInputInput {
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  background-color: transparent;
+  padding-inline: 0.75rem;
+  padding-block: 0.25rem;
+  font-size: var(--text-base);
+  border-radius: calc(0.25rem - 2px);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
