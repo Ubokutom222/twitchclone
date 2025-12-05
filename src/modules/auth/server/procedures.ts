@@ -8,6 +8,7 @@ import { signIn } from "@/auth";
 import bcrypt from "bcryptjs";
 import { encrypt } from "@/modules/auth/encryptHook";
 import { eq, or } from "drizzle-orm";
+import twilio from "twilio";
 
 const authRouter = createTRPCRouter({
   generateOTP: baseProcedure
@@ -20,9 +21,19 @@ const authRouter = createTRPCRouter({
       try {
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otp = await bcrypt.hash(OTP, 6);
-        console.log(otp, input.number);
-        // TODO: Remove this line after development
+        const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+        const accountToken = process.env.TWILIO_AUTH_TOKEN!;
+        // TODO: Remove this during deployment
         console.log(OTP);
+
+        const client = twilio(accountSid, accountToken);
+        client.messages.create({
+          body: `Your Chat Application Verification Code is ${OTP}`,
+          messagingServiceSid: "MG4c55a38611298d12df0d907132cf69c4",
+          // NOTE: The twilio account used for development is a trial account thus only sends to verified numbers
+          to: "+2349169199457",
+          // to: input.number,
+        });
         return { otp };
       } catch (error) {
         console.log(error);
@@ -54,19 +65,6 @@ const authRouter = createTRPCRouter({
             message: "Missing Body Data",
           });
         }
-
-        const existingUser = await db
-          .select()
-          .from(user)
-          .where(or(eq(user.email, email), eq(user.phoneNumber, phoneNumber)));
-
-        if (existingUser.length > 0) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "User already exist",
-          });
-        }
-
         const newUser = await db
           .insert(user)
           .values({
@@ -86,7 +84,7 @@ const authRouter = createTRPCRouter({
           name: username,
           email,
           emailVerified: newUser[0].emailVerified,
-          redirectTo: "/"
+          redirect: false,
         });
       } catch (error) {
         console.log(error);
@@ -108,7 +106,24 @@ const authRouter = createTRPCRouter({
             message: "Missing Body Data",
           });
         }
-        return { number: encrypt(input) };
+
+        const [existingUser] = await db
+          .select()
+          .from(user)
+          .where(eq(user.phoneNumber, number));
+
+        if (existingUser) {
+          await signIn("credentials", {
+            phoneNumber: existingUser.phoneNumber,
+            name: existingUser.name,
+            email: existingUser.email,
+            emailVerified: existingUser.emailVerified,
+            redirect: false,
+          });
+          return null;
+        } else {
+          return { number: encrypt(input) };
+        }
       } catch (error) {
         console.log(error);
         throw new TRPCError({

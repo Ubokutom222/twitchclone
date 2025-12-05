@@ -2,9 +2,9 @@ import NextAuth from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import db from "@/db";
 import { user, session, account, verification } from "@/db/schema";
-import CreadentialsProvider from "next-auth/providers/credentials";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { eq } from "drizzle-orm";
-import { type User } from "@auth/core/types"
+import { type User } from "@auth/core/types";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -14,7 +14,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: verification,
   }),
   providers: [
-    CreadentialsProvider({
+    CredentialsProvider({
       credentials: {
         phoneNumber: { label: "phoneNumber" },
         name: { label: "name" },
@@ -22,18 +22,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         emailVerified: { label: "emailVerified" },
       },
       async authorize(credentials) {
-        const [signedInUser] = await db
+        const [existingUser] = await db
           .select()
           .from(user)
           .where(eq(user.email, credentials.email as string));
 
-        if (signedInUser) {
-          return signedInUser as User;
-        }
+        if (!existingUser) return null;
 
-        return null;
+        return existingUser as User;
       },
     }),
   ],
   secret: process.env.AUTH_SECRET!,
+  session: { strategy: "jwt" },
 });
