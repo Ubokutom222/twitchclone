@@ -13,17 +13,22 @@ import {
 import { signOut } from "next-auth/react";
 import { trpc } from "@/trpc/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { type User } from "@/modules/home/types";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessageView } from "./MessageView";
+import { useSession } from "next-auth/react";
+import { useModal } from "@/modules/home/providers/ModalProvider";
+import { useActiveChatContext } from "@/modules/home/providers/ActiveChatProvider";
 
 export function ChatView() {
   const isMobile = useIsMobile();
   // INFO: This ensures the page is fully loaded before the this components renders.
   const [hasMounted, setHasMounted] = useState(false);
   const [open, setOpen] = useState<boolean>(true);
-  const [otherUser] = trpc.home.getUser.useSuspenseQuery();
-  const [selectedChat, setSelectedChat] = useState<User | null>(null);
+  const [conversations] = trpc.home.getChats.useSuspenseQuery();
+  const { activeChat: selectedChat, setActiveChat: setSelectedChat } =
+    useActiveChatContext();
+  const { data: session } = useSession();
+  const { openModal } = useModal();
   useEffect(() => {
     function handleMounted() {
       setHasMounted(true);
@@ -66,21 +71,29 @@ export function ChatView() {
                 <div className="p-4 h-full relative">
                   <h2 className="font-semibold text-lg mb-2">Contacts</h2>
                   <ScrollArea className="w-56 h-[calc(100vh-4rem-80px)]">
-                    {otherUser.map((user, index) => (
-                      <div
-                        className="w-full h-12 text-md p-2 flex flex-row space-x-2 items-center hover:bg-muted-foreground"
-                        key={index}
-                        onClick={() => setSelectedChat(user)}
-                      >
-                        <Avatar>
-                          <AvatarImage src={user.image ?? ""} />
-                          <AvatarFallback>{`${user.name?.charAt(0)}${user.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
-                        </Avatar>
-                        <h5>{user.name}</h5>
-                      </div>
-                    ))}
+                    {conversations?.map((user, index) => {
+                      const [otherUser] = user.members.filter(
+                        (user) => user.id !== session?.user?.id,
+                      );
+                      return (
+                        <div
+                          className="w-full h-12 text-md p-2 flex flex-row space-x-2 items-center hover:bg-muted-foreground"
+                          key={index}
+                          onClick={() => setSelectedChat(user)}
+                        >
+                          <Avatar>
+                            <AvatarImage src={otherUser.image ?? ""} />
+                            <AvatarFallback>{`${otherUser.name?.charAt(0).toUpperCase()}${otherUser.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
+                          </Avatar>
+                          <h5>{otherUser.name}</h5>
+                        </div>
+                      );
+                    })}
                   </ScrollArea>
-                  <Button className="absolute right-2 bottom-2 z-10">
+                  <Button
+                    className="absolute right-2 bottom-2 z-10"
+                    onClick={() => openModal("addChat")}
+                  >
                     <PlusIcon />
                   </Button>
                 </div>
@@ -88,16 +101,21 @@ export function ChatView() {
                 <div className="p-4 h-full">
                   <h2 className="font-semibold text-lg mb-2"></h2>
                   <ScrollArea className="h-[calc(100vh-4rem-80px)] w-12">
-                    {otherUser.map((user, index) => (
-                      <Avatar
-                        key={index}
-                        className="my-2 hover:bg-muted-foreground"
-                        onClick={() => setSelectedChat(user)}
-                      >
-                        <AvatarImage src={user.image ?? ""} />
-                        <AvatarFallback>{`${user.name?.charAt(0)}${user.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
-                      </Avatar>
-                    ))}
+                    {conversations?.map((user, index) => {
+                      const [otherUser] = user.members.filter(
+                        (user) => user.id !== session?.user?.id,
+                      );
+                      return (
+                        <Avatar
+                          key={index}
+                          className="my-2 hover:bg-muted-foreground"
+                          onClick={() => setSelectedChat(user)}
+                        >
+                          <AvatarImage src={otherUser.image ?? ""} />
+                          <AvatarFallback>{`${otherUser.name?.charAt(0).toUpperCase()}${otherUser.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
+                        </Avatar>
+                      );
+                    })}
                   </ScrollArea>
                 </div>
               )}

@@ -8,6 +8,7 @@ export default async function HomePage() {
   if (!session) {
     redirect("/verify");
   }
+  void (await trpc.home.getChats.prefetch());
   void (await trpc.home.getUser.prefetch());
   return <ChatView />;
 }

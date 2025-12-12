@@ -16,10 +16,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
       credentials: {
-        phoneNumber: { label: "phoneNumber" },
-        name: { label: "name" },
-        email: { label: "email" },
-        emailVerified: { label: "emailVerified" },
+        phoneNumber: { label: "phoneNumber", type: "text" },
+        name: { label: "name", type: "text" },
+        email: { label: "email", type: "email" },
+        emailVerified: { label: "emailVerified", type: "boolean" },
       },
       async authorize(credentials) {
         const [existingUser] = await db
@@ -35,4 +35,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   secret: process.env.AUTH_SECRET!,
   session: { strategy: "jwt" },
+  callbacks: {
+    async jwt({ token, user }) {
+      // Add custom fields once user logs in
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      // Expose custom fields to the client
+      session.user.id = token.id as string;
+      return session;
+    },
+  },
 });

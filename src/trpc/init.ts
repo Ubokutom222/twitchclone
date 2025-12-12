@@ -22,19 +22,16 @@ export const createCallerFactory = t.createCallerFactory;
 export const baseProcedure = t.procedure;
 
 export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
-  async function getSession() {
-    const session = await auth();
-    return session;
-  }
-  const gottenSession = await getSession();
-  if (!gottenSession) {
+  const session = await auth();
+  console.log(JSON.stringify(session, null, 2));
+  if (!session) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "No Signed In User" });
   }
 
   return next({
     ctx: {
       ...ctx,
-      gottenSession,
+      session,
     },
   });
 });
