@@ -76,7 +76,11 @@ export function VerifyNumber() {
       const data = await encryptMutation.mutateAsync({
         number: value ? value : "",
       });
-      router.push(`/register?number=${data.number}`);
+      if (data === null) {
+        router.push("/");
+      } else {
+        router.push(`/register?number=${data.number}`);
+      }
     } else {
       toast.error("Invalid OTP, Please Try Again");
     }
