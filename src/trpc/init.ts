@@ -23,7 +23,6 @@ export const baseProcedure = t.procedure;
 
 export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
   const session = await auth();
-  console.log(JSON.stringify(session, null, 2));
   if (!session) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "No Signed In User" });
   }

@@ -10,6 +10,7 @@ import {
 import db from "@/db";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import pusherInstance from "@/lib/pusher";
 
 const homeRouter = createTRPCRouter({
   getUser: protectedProcedure.query(async ({ ctx }) => {
@@ -185,6 +186,23 @@ const homeRouter = createTRPCRouter({
           .update(conversations)
           .set({ updatedAt: new Date() })
           .where(eq(conversations.id, conversationId));
+        try {
+          await pusherInstance.trigger(
+            `private-conversation-${conversationId}`,
+            "new-message",
+            {
+              id: newMessage.id,
+              content: newMessage.content,
+              senderId: newMessage.senderId,
+              createdAt: newMessage.createdAt,
+              messageType: newMessage.messageType,
+              mediaUrl: newMessage.mediaUrl,
+            },
+          );
+        } catch (err) {
+          // Don't fail the mutation; message is already stored.
+          console.warn("Pusher Trigger faild", err);
+        }
       } catch (error) {
         console.log(error);
         throw new TRPCError({

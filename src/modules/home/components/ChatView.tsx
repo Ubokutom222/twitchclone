@@ -77,7 +77,7 @@ export function ChatView() {
                       );
                       return (
                         <div
-                          className="w-full h-12 text-md p-2 flex flex-row space-x-2 items-center hover:bg-muted-foreground"
+                          className="w-full h-12 text-md p-2 flex flex-row space-x-2 items-center hover:bg-muted-foreground hover:cursor-pointer"
                           key={index}
                           onClick={() => setSelectedChat(user)}
                         >
@@ -108,7 +108,7 @@ export function ChatView() {
                       return (
                         <Avatar
                           key={index}
-                          className="my-2 hover:bg-muted-foreground"
+                          className="my-2 hover:bg-muted-foreground hover:cursor-pointer p-1"
                           onClick={() => setSelectedChat(user)}
                         >
                           <AvatarImage src={otherUser.image ?? ""} />
