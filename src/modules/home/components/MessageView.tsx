@@ -23,6 +23,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { UploadButton } from "@/uploadthing/components";
+import Image from "next/image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Props {
   user: Conversation | User | null;
@@ -32,6 +43,36 @@ type RouterOutput = inferRouterOutputs<AppRouter>;
 type MessagesPage = RouterOutput["home"]["getMessages"];
 type Message = MessagesPage["messages"][number];
 type RealtimeMessage = Omit<Message, "createdAt"> & { createdAt: string };
+
+interface UploadProgressDialogProps {
+  progress: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function UploadProgressDialog({
+  progress,
+  open,
+  onOpenChange,
+}: UploadProgressDialogProps) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>File Uploading</AlertDialogTitle>
+          <Progress value={progress} />
+          <div className="w-full justify-center flex text-base">
+            {progress}%
+          </div>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Hide</AlertDialogCancel>
+          <AlertDialogAction>Cancel Upload</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function MessageView({ user }: Props) {
   const [content, setContent] = useState<string>("");
@@ -142,6 +183,9 @@ export function MessageView({ user }: Props) {
       }
     } else return { recipientId: undefined, conversationId: undefined };
   }
+
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState<boolean>(false);
   return (
     <div className="flex-1 flex flex-col min-h-0 w-ful">
       <div
@@ -163,7 +207,19 @@ export function MessageView({ user }: Props) {
                 : "mr-auto bg-muted"
             }`}
           >
-            {msg.content}
+            {msg.messageType === "text" && msg.content}
+            {msg.messageType === "image" && msg.mediaUrl && (
+              <Image
+                src={msg.mediaUrl}
+                alt={`Image for ${msg.id}`}
+                width={200} // Set a fixed width
+                height={200} // Set a fixed height
+                className="rounded-md object-cover" // Add styling for better appearance
+              />
+            )}
+            {msg.messageType === "video" && msg.mediaUrl && (
+              <video src={msg.mediaUrl} controls />
+            )}
           </div>
         ))}
 
@@ -171,7 +227,11 @@ export function MessageView({ user }: Props) {
           <p className="text-center text-sm text-muted-foreground">Loading…</p>
         )}
       </div>
-
+      <UploadProgressDialog
+        progress={uploadProgress}
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+      />
       <div className="flex flex-row border-t border-t-foreground items-center">
         <Popover>
           <PopoverTrigger asChild>
@@ -213,9 +273,14 @@ export function MessageView({ user }: Props) {
               input={getUser()}
               onClientUploadComplete={() => {
                 toast.success("Uploaded Sucessfully");
+                setUploadDialogOpen(false);
               }}
               onUploadError={() => {
                 toast.error("Upload Failed");
+              }}
+              onUploadProgress={(progress) => {
+                setUploadDialogOpen(true);
+                setUploadProgress(progress);
               }}
             />
             <UploadButton
