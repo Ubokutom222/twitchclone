@@ -15,12 +15,6 @@ import pusherInstance from "@/lib/pusher";
 const homeRouter = createTRPCRouter({
   getUser: protectedProcedure.query(async ({ ctx }) => {
     try {
-      if (!ctx.session?.user) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Unauthorized, Please sign in",
-        });
-      }
       const otherUsers = await db
         .select()
         .from(user)
@@ -219,9 +213,28 @@ const homeRouter = createTRPCRouter({
         cursor: z.iso.datetime().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const { conversationId, limit, cursor } = input;
+
+        // Verify user is a member of this conversation
+        const membership = await db
+          .select()
+          .from(conversationMembers)
+          .where(
+            and(
+              eq(conversationMembers.conversationId, conversationId),
+              eq(conversationMembers.userId, ctx.session.user.id),
+            ),
+          )
+          .limit(1);
+
+        if (membership.length === 0) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not a member of this conversation",
+          });
+        }
 
         const rows = await db
           .select()

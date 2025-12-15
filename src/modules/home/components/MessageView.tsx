@@ -93,21 +93,28 @@ export function MessageView({ user }: Props) {
     if (hasEnteredText()) {
       if (user !== null) {
         if ("members" in user) {
-          const otherUser = user?.members.filter(
+          const otherUser = user.members?.filter(
             (user) => user.id !== session?.user?.id,
           );
+          const recipientId = otherUser?.[0]?.id;
+          if (!recipientId) {
+            toast.error("Unable to determine recipient");
+            return;
+          }
           await messageMutation.mutateAsync({
             content,
-            recipientId: otherUser ? otherUser[0].id : "",
+            recipientId,
           });
         } else {
+          if (!user.id) {
+            toast.error("Invalid user");
+            return;
+          }
           await messageMutation.mutateAsync({
             content,
-            recipientId: user?.id,
+            recipientId: user.id,
           });
         }
-      } else {
-        // TODO: Handle Voice Note Sending
       }
     }
   }

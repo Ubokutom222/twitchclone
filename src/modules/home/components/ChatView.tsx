@@ -72,9 +72,10 @@ export function ChatView() {
                   <h2 className="font-semibold text-lg mb-2">Contacts</h2>
                   <ScrollArea className="w-56 h-[calc(100vh-4rem-80px)]">
                     {conversations?.map((user, index) => {
-                      const [otherUser] = user.members.filter(
+                      const otherUser = user.members?.filter(
                         (user) => user.id !== session?.user?.id,
-                      );
+                      )?.[0];
+                      if (!otherUser) return null;
                       return (
                         <div
                           className="w-full h-12 text-md p-2 flex flex-row space-x-2 items-center hover:bg-muted-foreground hover:cursor-pointer"
@@ -83,7 +84,11 @@ export function ChatView() {
                         >
                           <Avatar>
                             <AvatarImage src={otherUser.image ?? ""} />
-                            <AvatarFallback>{`${otherUser.name?.charAt(0).toUpperCase()}${otherUser.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
+                            <AvatarFallback>
+                              {otherUser.name
+                                ? `${otherUser.name.charAt(0).toUpperCase()}${otherUser.name.charAt(1).toUpperCase()}`
+                                : "??"}
+                            </AvatarFallback>
                           </Avatar>
                           <h5>{otherUser.name}</h5>
                         </div>
@@ -102,9 +107,10 @@ export function ChatView() {
                   <h2 className="font-semibold text-lg mb-2"></h2>
                   <ScrollArea className="h-[calc(100vh-4rem-80px)] w-12">
                     {conversations?.map((user, index) => {
-                      const [otherUser] = user.members.filter(
+                      const otherUser = user.members?.filter(
                         (user) => user.id !== session?.user?.id,
-                      );
+                      )?.[0];
+                      if (!otherUser) return null;
                       return (
                         <Avatar
                           key={index}
@@ -112,7 +118,11 @@ export function ChatView() {
                           onClick={() => setSelectedChat(user)}
                         >
                           <AvatarImage src={otherUser.image ?? ""} />
-                          <AvatarFallback>{`${otherUser.name?.charAt(0).toUpperCase()}${otherUser.name?.charAt(1).toUpperCase()}`}</AvatarFallback>
+                          <AvatarFallback>
+                            {otherUser.name
+                              ? `${otherUser.name.charAt(0).toUpperCase()}${otherUser.name.charAt(1).toUpperCase()}`
+                              : "??"}
+                          </AvatarFallback>
                         </Avatar>
                       );
                     })}
