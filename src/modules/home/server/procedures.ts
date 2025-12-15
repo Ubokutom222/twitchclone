@@ -10,16 +10,11 @@ import {
 import db from "@/db";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import pusherInstance from "@/lib/pusher";
 
 const homeRouter = createTRPCRouter({
   getUser: protectedProcedure.query(async ({ ctx }) => {
     try {
-      if (!ctx.session?.user) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Unauthorized, Please sign in",
-        });
-      }
       const otherUsers = await db
         .select()
         .from(user)
@@ -185,6 +180,23 @@ const homeRouter = createTRPCRouter({
           .update(conversations)
           .set({ updatedAt: new Date() })
           .where(eq(conversations.id, conversationId));
+        try {
+          await pusherInstance.trigger(
+            `private-conversation-${conversationId}`,
+            "new-message",
+            {
+              id: newMessage.id,
+              content: newMessage.content,
+              senderId: newMessage.senderId,
+              createdAt: newMessage.createdAt,
+              messageType: newMessage.messageType,
+              mediaUrl: newMessage.mediaUrl,
+            },
+          );
+        } catch (err) {
+          // Don't fail the mutation; message is already stored.
+          console.warn("Pusher Trigger faild", err);
+        }
       } catch (error) {
         console.log(error);
         throw new TRPCError({
@@ -201,9 +213,28 @@ const homeRouter = createTRPCRouter({
         cursor: z.iso.datetime().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const { conversationId, limit, cursor } = input;
+
+        // Verify user is a member of this conversation
+        const membership = await db
+          .select()
+          .from(conversationMembers)
+          .where(
+            and(
+              eq(conversationMembers.conversationId, conversationId),
+              eq(conversationMembers.userId, ctx.session.user.id),
+            ),
+          )
+          .limit(1);
+
+        if (membership.length === 0) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not a member of this conversation",
+          });
+        }
 
         const rows = await db
           .select()

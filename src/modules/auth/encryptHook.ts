@@ -1,5 +1,4 @@
 import jwt, { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
-import { toast } from "sonner";
 const KEY = process.env.URL_SECRET_KEY!;
 
 interface encryptProps {

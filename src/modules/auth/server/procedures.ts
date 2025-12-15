@@ -58,7 +58,6 @@ const authRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       try {
         const { date, email, phoneNumber, username } = input;
-        if (process.env.NODE_ENV === "development") console.log(input);
         if (!date || !email || !phoneNumber || !username) {
           throw new TRPCError({
             code: "BAD_REQUEST",

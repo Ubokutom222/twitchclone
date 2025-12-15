@@ -29,6 +29,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!existingUser) return null;
 
+        // Verify credentials match
+        if (existingUser.phoneNumber !== credentials.phoneNumber) {
+          return null;
+        }
+
         return existingUser as User;
       },
     }),

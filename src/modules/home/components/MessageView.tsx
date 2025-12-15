@@ -1,15 +1,77 @@
 "use client";
 import { type Conversation, type User } from "@/modules/home/types";
 import { Button } from "@/components/ui/button";
-import { PaperclipIcon, Send } from "lucide-react";
+import {
+  PaperclipIcon,
+  Send,
+  MicIcon,
+  FileVideo,
+  FileImage,
+  File,
+} from "lucide-react";
 import { InputGroupTextarea } from "@/components/ui/input-group";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/trpc/client";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import pusherClient from "@/lib/pusher-client";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@/trpc/routers/_app";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { UploadButton } from "@/uploadthing/components";
+import Image from "next/image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Props {
   user: Conversation | User | null;
+}
+
+type RouterOutput = inferRouterOutputs<AppRouter>;
+type MessagesPage = RouterOutput["home"]["getMessages"];
+type Message = MessagesPage["messages"][number];
+type RealtimeMessage = Omit<Message, "createdAt"> & { createdAt: string };
+
+interface UploadProgressDialogProps {
+  progress: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function UploadProgressDialog({
+  progress,
+  open,
+  onOpenChange,
+}: UploadProgressDialogProps) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>File Uploading</AlertDialogTitle>
+          <Progress value={progress} />
+          <div className="w-full justify-center flex text-base">
+            {progress}%
+          </div>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Hide</AlertDialogCancel>
+          <AlertDialogAction>Cancel Upload</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 export function MessageView({ user }: Props) {
@@ -23,21 +85,36 @@ export function MessageView({ user }: Props) {
     },
   });
   const { data: session } = useSession();
+  const hasEnteredText = useCallback(() => {
+    if (content.length > 0) return true;
+    else return false;
+  }, [content]);
   async function onSubmit() {
-    if (user !== null) {
-      if ("members" in user) {
-        const otherUser = user?.members.filter(
-          (user) => user.id !== session?.user?.id,
-        );
-        await messageMutation.mutateAsync({
-          content,
-          recipientId: otherUser ? otherUser[0].id : "",
-        });
-      } else {
-        await messageMutation.mutateAsync({
-          content,
-          recipientId: user?.id,
-        });
+    if (hasEnteredText()) {
+      if (user !== null) {
+        if ("members" in user) {
+          const otherUser = user.members?.filter(
+            (user) => user.id !== session?.user?.id,
+          );
+          const recipientId = otherUser?.[0]?.id;
+          if (!recipientId) {
+            toast.error("Unable to determine recipient");
+            return;
+          }
+          await messageMutation.mutateAsync({
+            content,
+            recipientId,
+          });
+        } else {
+          if (!user.id) {
+            toast.error("Invalid user");
+            return;
+          }
+          await messageMutation.mutateAsync({
+            content,
+            recipientId: user.id,
+          });
+        }
       }
     }
   }
@@ -46,7 +123,7 @@ export function MessageView({ user }: Props) {
     trpc.home.getMessages.useInfiniteQuery(
       {
         conversationId: user?.id ?? "",
-        limit: 20,
+        limit: 9,
       },
       {
         enabled: !!user && "members" in user,
@@ -57,19 +134,99 @@ export function MessageView({ user }: Props) {
   allMessages.sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (!user || !("isGroup" in user)) return;
+    const channelName = `private-conversation-${user.id}`;
+    const channel = pusherClient.subscribe(channelName);
+    const handler = (payload: RealtimeMessage) => {
+      const message: Message = {
+        ...payload,
+        createdAt: new Date(payload.createdAt) as unknown as Date,
+      };
+      // Optimistically add new message to TRPC cache
+      utils.home.getMessages.setInfiniteData(
+        { conversationId: user.id, limit: 9 },
+        (oldData) => {
+          if (!oldData) return oldData;
+          if (oldData.pages[0]?.messages?.some((m) => m.id === message.id)) {
+            return oldData;
+          }
+          return {
+            ...oldData,
+            pages: [
+              {
+                ...oldData.pages[0],
+                messages: [message, ...oldData.pages[0].messages],
+              },
+              ...oldData.pages.slice(1),
+            ],
+          };
+        },
+      );
+    };
+    channel.bind("new-message", handler);
+
+    return () => {
+      channel.unbind("new-message", handler);
+      pusherClient.unsubscribe(channelName);
+    };
+  }, [user, utils]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [user, data]);
+
+  function getUser() {
+    if (user !== null) {
+      if ("members" in user) {
+        return { conversationId: user.id, recipientId: undefined };
+      } else {
+        return { recipientId: user.id, conversationId: undefined };
+      }
+    } else return { recipientId: undefined, conversationId: undefined };
+  }
+
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState<boolean>(false);
   return (
-    <div className="flex-1 flex flex-col h-fit w-full">
-      <div className="flex-1 overflow-y-scroll p-4 space-y-2">
+    <div className="flex-1 flex flex-col min-h-0 w-ful">
+      <div
+        className="flex-1 overflow-y-auto max-h-[calc(100vh-4rem-4rem-68px)] h-full min-h-0 p-4 space-y-2"
+        ref={scrollRef}
+        onScroll={(e) => {
+          const top = e.currentTarget.scrollTop === 0;
+          if (top && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+      >
         {allMessages.map((msg) => (
           <div
             key={msg.id}
-            className={`max-w-[75%] px-3 py-2 rounded-lg ${
+            className={`max-w-[75%] w-fit px-3 py-2 rounded-lg ${
               msg.senderId === session?.user?.id
                 ? "ml-auto bg-primary text-primary-foreground"
                 : "mr-auto bg-muted"
             }`}
           >
-            {msg.content}
+            {msg.messageType === "text" && msg.content}
+            {msg.messageType === "image" && msg.mediaUrl && (
+              <Image
+                src={msg.mediaUrl}
+                alt={`Image for ${msg.id}`}
+                width={200} // Set a fixed width
+                height={200} // Set a fixed height
+                className="rounded-md object-cover" // Add styling for better appearance
+              />
+            )}
+            {msg.messageType === "video" && msg.mediaUrl && (
+              <video src={msg.mediaUrl} controls />
+            )}
           </div>
         ))}
 
@@ -77,18 +234,90 @@ export function MessageView({ user }: Props) {
           <p className="text-center text-sm text-muted-foreground">Loading…</p>
         )}
       </div>
-
+      <UploadProgressDialog
+        progress={uploadProgress}
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+      />
       <div className="flex flex-row border-t border-t-foreground items-center">
-        <Button size="icon">
-          <PaperclipIcon />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="icon">
+              <PaperclipIcon />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="size-fit grid grid-cols-3 gap-2">
+            <UploadButton
+              endpoint={"imageUploader"}
+              appearance={{
+                button:
+                  "bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-9 px-4 py-2 has-[>svg]:px-3",
+                allowedContent: "text-primary",
+              }}
+              content={{
+                button: <FileImage className="text-primary-foreground" />,
+                allowedContent: "Images",
+              }}
+              input={getUser()}
+              onClientUploadComplete={() => {
+                toast.success("Uploaded Sucessfully");
+              }}
+              onUploadError={() => {
+                toast.error("Upload Failed");
+              }}
+            />
+            <UploadButton
+              endpoint={"videoUploader"}
+              appearance={{
+                button:
+                  "bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-9 px-4 py-2 has-[>svg]:px-3",
+                allowedContent: "text-primary",
+              }}
+              content={{
+                button: <FileVideo className="text-primary-foreground" />,
+                allowedContent: "Videos",
+              }}
+              input={getUser()}
+              onClientUploadComplete={() => {
+                toast.success("Uploaded Sucessfully");
+                setUploadDialogOpen(false);
+              }}
+              onUploadError={() => {
+                toast.error("Upload Failed");
+              }}
+              onUploadProgress={(progress) => {
+                setUploadDialogOpen(true);
+                setUploadProgress(progress);
+              }}
+            />
+            <UploadButton
+              endpoint={"documentUploader"}
+              appearance={{
+                button:
+                  "bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-9 px-4 py-2 has-[>svg]:px-3",
+                allowedContent: "text-primary",
+              }}
+              content={{
+                button: <File className="text-primary-foreground" />,
+                allowedContent: "PDF",
+              }}
+              input={getUser()}
+              onClientUploadComplete={() => {
+                toast.success("Uploaded Sucessfully");
+              }}
+              onUploadError={() => {
+                toast.error("Upload Failed");
+              }}
+            />
+          </PopoverContent>
+        </Popover>
         <InputGroupTextarea
-          className="flex-1 border rounded-md m-2 max-h-[20vh] dark:bg-input/30 border-input w-full min-w-0 bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+          className="flex-1 border rounded-md m-2 h-16 dark:bg-input/30 border-input w-full min-w-0 bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
         <Button onClick={onSubmit}>
-          <Send />
+          {hasEnteredText() ? <Send /> : <MicIcon />}
         </Button>
       </div>
     </div>
