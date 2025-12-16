@@ -8,6 +8,7 @@ import {
   FileVideo,
   FileImage,
   File,
+  ArrowLeft,
 } from "lucide-react";
 import { InputGroupTextarea } from "@/components/ui/input-group";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -34,9 +35,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Props {
   user: Conversation | User | null;
+  mobileProps?: {
+    setDirection: (n: number) => void;
+    setViewState: (state: "CHATVIEW" | "MESSAGEVIEW") => void;
+  };
 }
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
@@ -48,12 +54,14 @@ interface UploadProgressDialogProps {
   progress: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  cancelUpload: () => void;
 }
 
 function UploadProgressDialog({
   progress,
   open,
   onOpenChange,
+  cancelUpload,
 }: UploadProgressDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -67,14 +75,17 @@ function UploadProgressDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Hide</AlertDialogCancel>
-          <AlertDialogAction>Cancel Upload</AlertDialogAction>
+          <AlertDialogAction onClick={cancelUpload}>
+            Cancel Upload
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
-export function MessageView({ user }: Props) {
+export function MessageView({ user, mobileProps }: Props) {
+  const isMobile = useIsMobile();
   const [content, setContent] = useState<string>("");
   const messageMutation = trpc.home.sendMessage.useMutation({
     onSuccess() {
@@ -191,12 +202,34 @@ export function MessageView({ user }: Props) {
     } else return { recipientId: undefined, conversationId: undefined };
   }
 
+  function cancelUpload() {}
+
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadDialogOpen, setUploadDialogOpen] = useState<boolean>(false);
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-ful">
+    <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+      {isMobile && mobileProps && (
+        <div
+          id="header"
+          className="flex flex-row border-b border-b-foreground px-6 justify-between items-center"
+        >
+          <div className="flex flex-row items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                mobileProps.setDirection(-1);
+                mobileProps.setViewState("CHATVIEW");
+              }}
+            >
+              <ArrowLeft />
+            </Button>
+            <h1>{user && "phoneNumber" in user && JSON.stringify(user)}</h1>
+          </div>
+        </div>
+      )}
       <div
-        className="flex-1 overflow-y-auto max-h-[calc(100vh-4rem-4rem-68px)] h-full min-h-0 p-4 space-y-2"
+        className="flex-1 overflow-y-auto max-h-[calc(100vh-4rem-4rem-68px)] min-h-0 p-4 space-y-2"
         ref={scrollRef}
         onScroll={(e) => {
           const top = e.currentTarget.scrollTop === 0;
@@ -238,6 +271,7 @@ export function MessageView({ user }: Props) {
         progress={uploadProgress}
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
+        cancelUpload={cancelUpload}
       />
       <div className="flex flex-row border-t border-t-foreground items-center">
         <Popover>
@@ -261,9 +295,11 @@ export function MessageView({ user }: Props) {
               input={getUser()}
               onClientUploadComplete={() => {
                 toast.success("Uploaded Sucessfully");
+                setUploadDialogOpen(false);
               }}
               onUploadError={() => {
                 toast.error("Upload Failed");
+                setUploadDialogOpen(false);
               }}
             />
             <UploadButton
@@ -284,6 +320,7 @@ export function MessageView({ user }: Props) {
               }}
               onUploadError={() => {
                 toast.error("Upload Failed");
+                setUploadDialogOpen(false);
               }}
               onUploadProgress={(progress) => {
                 setUploadDialogOpen(true);
@@ -304,9 +341,11 @@ export function MessageView({ user }: Props) {
               input={getUser()}
               onClientUploadComplete={() => {
                 toast.success("Uploaded Sucessfully");
+                setUploadDialogOpen(false);
               }}
               onUploadError={() => {
                 toast.error("Upload Failed");
+                setUploadDialogOpen(false);
               }}
             />
           </PopoverContent>
