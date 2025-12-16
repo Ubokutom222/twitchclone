@@ -202,6 +202,17 @@ export function MessageView({ user, mobileProps }: Props) {
     } else return { recipientId: undefined, conversationId: undefined };
   }
 
+  function getUserName() {
+    if (user !== null) {
+      if ("members" in user) {
+        const otherUser = user.members?.filter(
+          (user) => user.id !== session?.user?.id,
+        )?.[0];
+        return otherUser.name;
+      } else return user.name;
+    } else return "";
+  }
+
   function cancelUpload() {}
 
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -224,7 +235,7 @@ export function MessageView({ user, mobileProps }: Props) {
             >
               <ArrowLeft />
             </Button>
-            <h1>{user && "phoneNumber" in user && JSON.stringify(user)}</h1>
+            <h1>{getUserName()}</h1>
           </div>
         </div>
       )}

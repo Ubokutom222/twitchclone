@@ -26,8 +26,12 @@ export function ChatView() {
   const [hasMounted, setHasMounted] = useState(false);
   const [open, setOpen] = useState<boolean>(true);
   const [conversations] = trpc.home.getChats.useSuspenseQuery();
-  const { activeChat: selectedChat, setActiveChat: setSelectedChat } =
-    useActiveChatContext();
+  const {
+    activeChat: selectedChat,
+    setActiveChat: setSelectedChat,
+    viewState,
+    setViewState,
+  } = useActiveChatContext();
   const { data: session } = useSession();
   const { openModal } = useModal();
   useEffect(() => {
@@ -36,9 +40,6 @@ export function ChatView() {
     }
     handleMounted();
   }, []);
-  const [viewState, setViewState] = useState<"CHATVIEW" | "MESSAGEVIEW">(
-    "CHATVIEW",
-  );
   const [direction, setDirection] = useState<number>(1); // 1 -> forward (slide from right), -1 -> back (slide from left)
 
   const slideVariants = {

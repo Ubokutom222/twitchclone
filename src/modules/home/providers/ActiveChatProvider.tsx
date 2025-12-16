@@ -5,6 +5,8 @@ import { type Conversation, type User } from "@/modules/home/types";
 interface ActiveChatContextProp {
   activeChat: Conversation | User | null;
   setActiveChat: (user: Conversation | User | null) => void;
+  viewState: "CHATVIEW" | "MESSAGEVIEW";
+  setViewState: (viewState: "CHATVIEW" | "MESSAGEVIEW") => void;
 }
 
 const ActiveChatContext = createContext<ActiveChatContextProp | undefined>(
@@ -19,9 +21,14 @@ export function ActiveChatContextProivder({
   const [activeChat, setActiveChat] = useState<Conversation | User | null>(
     null,
   );
+  const [viewState, setViewState] = useState<"CHATVIEW" | "MESSAGEVIEW">(
+    "CHATVIEW",
+  );
 
   return (
-    <ActiveChatContext.Provider value={{ activeChat, setActiveChat }}>
+    <ActiveChatContext.Provider
+      value={{ activeChat, setActiveChat, viewState, setViewState }}
+    >
       {children}
     </ActiveChatContext.Provider>
   );
