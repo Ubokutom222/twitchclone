@@ -17,7 +17,7 @@ const authRouter = createTRPCRouter({
         number: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async () => {
       try {
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otp = await bcrypt.hash(OTP, 6);
@@ -53,11 +53,12 @@ const authRouter = createTRPCRouter({
         email: z.email(),
         phoneNumber: z.string().nonoptional(),
         date: z.string().nonoptional(),
+        profileImage: z.string().nullish(),
       }),
     )
     .mutation(async ({ input }) => {
       try {
-        const { date, email, phoneNumber, username } = input;
+        const { date, email, phoneNumber, username, profileImage } = input;
         if (!date || !email || !phoneNumber || !username) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -75,6 +76,7 @@ const authRouter = createTRPCRouter({
             createdAt: new Date(),
             updatedAt: new Date(),
             emailVerified: new Date(),
+            image: profileImage,
           })
           .returning();
 

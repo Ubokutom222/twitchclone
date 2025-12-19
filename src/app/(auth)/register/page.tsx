@@ -18,7 +18,7 @@ interface PageProps {
 export default async function Register({ searchParams }: PageProps) {
   const { number } = await loadVerifyParams(searchParams);
   const data = decrypt(number);
-  if (typeof data === "string" || !("number" in data)) {
+  if (typeof data === "string" || !("number" in data) || !number) {
     return notFound();
   }
 
