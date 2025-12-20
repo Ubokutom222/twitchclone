@@ -12,7 +12,8 @@ import { useModal } from "@/modules/home/providers/ModalProvider";
 
 export function NewChatDialog() {
   const [users] = trpc.home.getUser.useSuspenseQuery();
-  const { setActiveChat: setSelectedChat } = useActiveChatContext();
+  const { setActiveChat: setSelectedChat, setViewState } =
+    useActiveChatContext();
   const { closeModal } = useModal();
   return (
     <DialogContent>
@@ -24,6 +25,7 @@ export function NewChatDialog() {
               key={index}
               onSelect={() => {
                 setSelectedChat(user);
+                setViewState("MESSAGEVIEW");
                 closeModal();
               }}
             >

@@ -12,7 +12,7 @@ import {
 
 export const user = pgTable("user", {
   id: text("id").notNull().primaryKey(),
-  name: text("name"),
+  name: text("name").notNull(),
   email: text("email").unique(),
   emailVerified: timestamp("email_verified").notNull(),
   image: text("image"),

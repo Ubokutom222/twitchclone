@@ -224,7 +224,7 @@ const homeRouter = createTRPCRouter({
           .where(
             and(
               eq(conversationMembers.conversationId, conversationId),
-              eq(conversationMembers.userId, ctx.session.user.id),
+              eq(conversationMembers.userId, ctx.session?.user?.id as string),
             ),
           )
           .limit(1);

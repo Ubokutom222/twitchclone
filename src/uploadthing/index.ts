@@ -423,7 +423,15 @@ export const ourFileRouter = {
         });
       }
     }),
-  // TODO: Create a profile image fle router
+  profileImageUploader: f({
+    image: {
+      minFileCount: 1,
+      maxFileCount: 1,
+      maxFileSize: "4MB",
+    },
+  }).onUploadComplete(({ file }) => {
+    return { fileUrl: file.ufsUrl };
+  }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;
