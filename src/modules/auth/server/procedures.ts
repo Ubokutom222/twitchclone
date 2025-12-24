@@ -21,17 +21,18 @@ const authRouter = createTRPCRouter({
       try {
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otp = await bcrypt.hash(OTP, 6);
-        const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-        const accountToken = process.env.TWILIO_AUTH_TOKEN!;
+        console.log(otp);
+        // const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+        // const accountToken = process.env.TWILIO_AUTH_TOKEN!;
 
-        const client = twilio(accountSid, accountToken);
-        client.messages.create({
-          body: `Your Chat Application Verification Code is ${OTP}`,
-          messagingServiceSid: "MG4c55a38611298d12df0d907132cf69c4",
-          // NOTE: The twilio account used for development is a trial account thus only sends to verified numbers
-          to: "+2349169199457",
-          // to: input.number,
-        });
+        // const client = twilio(accountSid, accountToken);
+        // await client.messages.create({
+        // body: `Your Chat Application Verification Code is ${OTP}`,
+        // messagingServiceSid: "MG4c55a38611298d12df0d907132cf69c4",
+        // NOTE: The twilio account used for development is a trial account thus only sends to verified numbers
+        // to: "+2349169199457",
+        // to: input.number,
+        // });
         return { otp };
       } catch (error) {
         console.log(error);
