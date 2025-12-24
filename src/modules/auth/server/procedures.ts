@@ -23,8 +23,6 @@ const authRouter = createTRPCRouter({
         const otp = await bcrypt.hash(OTP, 6);
         const accountSid = process.env.TWILIO_ACCOUNT_SID!;
         const accountToken = process.env.TWILIO_AUTH_TOKEN!;
-        // TODO: Remove this during deployment
-        console.log(OTP);
 
         const client = twilio(accountSid, accountToken);
         client.messages.create({
