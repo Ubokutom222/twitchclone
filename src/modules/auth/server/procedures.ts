@@ -21,7 +21,7 @@ const authRouter = createTRPCRouter({
       try {
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otp = await bcrypt.hash(OTP, 6);
-        console.log(otp);
+        console.log(OTP);
         // const accountSid = process.env.TWILIO_ACCOUNT_SID!;
         // const accountToken = process.env.TWILIO_AUTH_TOKEN!;
 
